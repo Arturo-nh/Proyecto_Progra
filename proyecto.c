@@ -39,17 +39,28 @@ unsigned long long encode (char placas[7],char color,char verificacion,char comb
     int color_code;
     if(color=='R') 
         color_code=0;
-        else if(color=='A') 
-            color_code=1;
-        else if(color=='B') 
-            color_code=2;
-        else 
-            color_code=3;
+    else if(color=='A') 
+        color_code=1;
+    else if(color=='B') 
+        color_code=2;
+    else 
+        color_code=3;
+    
     
     int verif_code=(verificacion=='Y')?1:0;
+
+    int combus_code;
+    if(combustible=='G')
+        combus_code==0;
+    else if(combustible=='D')
+        combus_code==1;
+    else if(combustible=='E')
+        combus_code==3;
+
     /* pues aqui ya es meter a la variable x, cada una de nuestras codificacions ya convertidas 
     con sus respectivos espacios en bits
     */
+
     x <<= 23; 
     x |= datos;
     x <<= 2;
@@ -60,15 +71,15 @@ unsigned long long encode (char placas[7],char color,char verificacion,char comb
     x |= velocidad_limite;
     x << 1;
     x |= verif_code;
-    
 
+    return x;
 }
 
+void central (unsigned long long x){
+    
+    
 
 
-
-
-void central ()
 
     if (velocidad_km>velocidad_limite) {
         int km_excedidos = velocidad_km-velocidad_limite;
@@ -93,3 +104,4 @@ void central ()
         else
             multa = multa * 1.50;
     }
+}
