@@ -10,10 +10,13 @@ int main() {
     int velocidad_limite; // 7 bits
     int multa; // 8 bits
     
+    float velocidad_km = (velocidad_mh+999)/1000;
+    
     scanf("%6s %c [%d|%d] %c %c", placas, &color, &velocidad_mh, &velocidad_limite, &verificacion, &combustible);
 
-    float velocidad_km = (velocidad_mh+999)/1000;
+    x = encode(char placas[7],char color,char verificacion,char combustible,int velocidad_km,int velocidad_limite);
 
+    central(unsigned long long x); 
 }
 
 /*usamos unsigned long long ya que sumando todos los bits necesarios que usa cada variable para guardar la info
@@ -36,6 +39,7 @@ unsigned long long encode (char placas[7],char color,char verificacion,char comb
     datos |= (placas[5] - '0');
     // 01001 01110 10111 1010 1110
 
+    //Aquí ya codificamos las opciones de color
     int color_code;
     if(color=='R') 
         color_code=0;
@@ -46,16 +50,19 @@ unsigned long long encode (char placas[7],char color,char verificacion,char comb
     else 
         color_code=3;
     
-    
+  /*Aquí usamos el operador ternario para asignar el código de si tiene o no la verificación; y está fácil
+  en ternario porque solo son dos valores posibles  
+  */
     int verif_code=(verificacion=='Y')?1:0;
 
+//Nuestra codificación para los tipos de combustible
     int combus_code;
     if(combustible=='G')
         combus_code==0;
     else if(combustible=='D')
         combus_code==1;
     else if(combustible=='E')
-        combus_code==3;
+        combus_code==2;
 
     /* pues aqui ya es meter a la variable x, cada una de nuestras codificacions ya convertidas 
     con sus respectivos espacios en bits
@@ -71,37 +78,129 @@ unsigned long long encode (char placas[7],char color,char verificacion,char comb
     x |= velocidad_limite;
     x << 1;
     x |= verif_code;
+    x << 2;
+    x |= combus_code;
 
     return x;
 }
 
 void central (unsigned long long x){
-    
-    
+int velocidad_km;
+int velocidad_limite;
+int verif_code;
+int color_code;
+int combus_code;
+int datos;
+float multa_velocidad = 0;
+float multa_no_refrendo = 0;
+float total = 0;
 
+    /* Lo que sigue ahora es descodificar nuestra variable e ir sacando cada dato que nos
+    interesa 1 por 1; esto lo logramos a partir de separarlos por su valor de bits que definimos al inicio*/
+combus_code = x & 3;
+    x >>=2;
+verif_code = x & 1; //aplicamos la máscara para sacar solo los valores que necesitamos (1 porque esta en la ultima posición y es solo 1 bit)
+    x >>= 1; //y recorremos nuestra variable para eliminar la que ya sacamos
+velocidad_limite = x & 127; //7 bits equivalen a 127 en decimal para que nos queden puros 1; 128 sería 10000000 y no es lo que necesitamos
+    x >>= 7;
+velocidad_km = x & 255;
+    x >>= 8; 
+color_code = x & 3;
+    x>>=2;
+datos = x & 8388607;
+// ya aquí no hace falta hacer corrimiento porque terminamos de usar x
 
+//Ahora si descodificamos todo por completo//
 
-    if (velocidad_km>velocidad_limite) {
+char placas[7];
+placas[0] = (datos >> 18) + 'A'; 
+placas[1] = ((datos >> 13) & 31) + 'A'; /*vamos de 5 en 5 recorriendo datos porque 
+cada letra es de 5 bits; eñ 31 es la mascara que necesitamos para solo esos 5 bits */
+placas[2] = ((datos >> 8) & 31) + 'A';
+placas[3] = '-';
+placas[4] = ((datos >> 4) & 15) + '0'; //aqui recorremos 4 porque un numero es de 4 bits. La mascara es de 15 porque a eso equivalen 4 bits prendidos.
+placas[5] = (datos & 15) + '0';
+placas[6] = '\0';
+
+char color_nombre[10];
+char color_letra;
+
+ if (color_code == 0){
+     color_letra = 'R';
+     sprintf(color_nombre, "Rojo");
+ }
+ else if (color_code == 1){
+     color_letra = 'A';
+     sprintf(color_nombre, "Azul");
+ }
+ else if (color_code == 2){
+     color_letra = 'B';
+     sprintf(color_nombre, "Blanco");
+     }
+ else if (color_code == 3){
+     color_letra = 'N';
+     sprintf(color_nombre, "Negro");
+ }
+
+char combus_letra;
+char combus_nombre[10];
+
+if (combus_code == 0){
+    combus_letra = 'G';
+    sprintf(combus_nombre, "Gasolina");
+}
+else if (combus_code == 1){
+    combus_letra = 'D';
+    sprintf(combus_nombre, "Diesel");
+}
+else if (combus_code == 2){
+    combus_letra = 'E';
+    sprintf(combus_nombre, "Eléctrico");
+}
+
+if (velocidad_km>velocidad_limite) {
         int km_excedidos = velocidad_km-velocidad_limite;
         int precio = 50;
-
-        if (km_excedidos>=20)
-            precio=100;
-        else if (km_excedidos >= 40)
-            precio = 200;
+/*Aqui si checó nuestro historial de código, podrá ver que pusimos antes los if de menor a mayor, lo cual
+        es un error ya que una vez que encuentre un TRUE se saltará todos los demás ifs. Es por eso
+        que los pusimos de mayor a menor, para que si ponga la multa correcta*/
+        if (km_excedidos >= 80)
+            precio = 800;
         else if (km_excedidos >= 60)
             precio = 400;
-        else if (km_excedidos >= 80)
-            precio = 800;
-        multa = precio*km_excedidos;
+        else if (km_excedidos >= 40)
+            precio = 200;
+        else if (km_excedidos >= 20)
+            precio = 100;
+        
+        multa_velocidad = precio*km_excedidos;
     }
 
 
-    if (velocidad_km > velocidad_limite && verificacion == 'N') {
-
-        if (combustible == 'E')
-            multa = multa * 1.25;
-        else
-            multa = multa * 1.50;
+    if (verif_code == 0) {
+        if (km_excedidos > 0){
+            multa_no_refrendo = (combus_code ==2)? multa_velocidad * 0.25 : multa_velocidad * 0.50;
+        }
+        else{
+            total = 1500
+if (total == 0){
+    total = multa_velocidad + multa_no_refrendo;        }
     }
-}
+
+
+printf("Multa\n");
+printf("Información del vehículo:\n");
+printf ("Color: %s", color_nombre);
+printf("Placas: %s", placas);
+printf("Velocidad Actual\t: %d km/hr\n", velocidad_km);
+printf("Límite de Velocidad en Vía\t: %d km/hr\n", velocidad_limite);
+printf("Refrendo\t\t:  %s\n", verif_code ? "PAGADO" : "VENCIDO";
+printf("\nDesgloce de multa :\n");
+
+if (multa_velocidad > 0)
+    printf("\t Exceso de velocidad (%d km x $%d.00 pesos)\n$%8.2f MXN\n", km_excedidos, precio, multa_velocidad);
+if (multa_no_refrendo > 0) 
+    printf("\t Sin Refrendo, %.2f\t\t$8.2f MXN\n", (combus_code == 2 ? 1.25 : 1.50), multa_no_refrendo);
+printf("\t----------------------------------------------------------------\n");
+printf("Total:\t$8.2f MXN\n", total);
+    }
